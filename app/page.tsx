@@ -1,37 +1,10 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useRef, useState } from "react";
 import SpecView from "@/components/SpecView";
 import type { Spec, SpecInput, Timeframe } from "@/lib/types";
 
 const TIMEFRAMES: Timeframe[] = ["해커톤 24시간", "1주", "1달"];
-
-// Step 1 전용 가짜 데이터. 입력값은 그대로 옮기고, 입력에 없는 칸은 "[예시]"로만 채운다.
-// Step 2에서 이 함수를 지우고 fetch("/api/specs")로 바꾼다.
-function makeMockSpec(input: SpecInput): Spec {
-  return {
-    product_name: input.title,
-    one_liner: `${input.title} (미리보기)`,
-    problem: input.problem,
-    target_users: [
-      {
-        persona: input.target || "타깃 미입력",
-        pain: "[예시] 실제 생성 시 AI가 이 타깃의 불편함을 적어요.",
-      },
-    ],
-    core_features: [
-      { name: "[예시] 핵심 기능 1", description: "실제 생성 시 AI가 채워요.", priority: "P0" },
-      { name: "[예시] 추가 기능 1", description: "실제 생성 시 AI가 채워요.", priority: "P1" },
-    ],
-    user_flow: ["[예시] 1단계", "[예시] 2단계", "[예시] 3단계"],
-    screens: [{ name: "[예시] 메인", purpose: "실제 생성 시 AI가 채워요." }],
-    data_model: [{ table: "[예시] table_name", columns: ["id uuid", "created_at timestamptz"] }],
-    api_endpoints: [{ method: "GET", path: "/api/example", description: "[예시]" }],
-    out_of_scope: [`개발 기간(${input.timeframe}) 안에 못 끝낼 기능은 [예시]로 여기에 적혀요.`],
-    risks: ["[예시] 실제 생성 시 AI가 리스크를 적어요."],
-    first_prompt: `아이디어: ${input.title}\n문제: ${input.problem}\n타깃: ${input.target || "미입력"}\n개발 기간: ${input.timeframe}\n\n[예시] 실제 생성 시 AI가 바로 쓸 수 있는 첫 프롬프트를 적어요.`,
-  };
-}
 
 export default function Home() {
   const [title, setTitle] = useState("");
@@ -41,18 +14,12 @@ export default function Home() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [spec, setSpec] = useState<Spec | null>(null);
-  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  // state는 다음 렌더 때 바뀌므로, 아주 빠른 연타는 ref로 한 번 더 막는다
+  const inFlightRef = useRef(false);
 
-  // 화면을 떠나면 남아 있는 타이머를 정리한다
-  useEffect(() => {
-    return () => {
-      if (timerRef.current) clearTimeout(timerRef.current);
-    };
-  }, []);
-
-  function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
+  async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
-    if (loading) return; // 중복 제출 방지
+    if (loading || inFlightRef.current) return; // 중복 제출 방지
 
     const input: SpecInput = {
       title: title.trim(),
@@ -67,11 +34,26 @@ export default function Home() {
 
     setError("");
     setLoading(true);
-    timerRef.current = setTimeout(() => {
-      setSpec(makeMockSpec(input));
+    inFlightRef.current = true;
+    try {
+      const res = await fetch("/api/specs", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(input),
+      });
+      const data = await res.json().catch(() => null);
+      if (res.ok && data?.spec) {
+        setSpec(data.spec);
+      } else {
+        setError(data?.error ?? "PRD를 만들지 못했어요. 다시 시도해 주세요.");
+      }
+    } catch {
+      setError("서버에 연결하지 못했어요. 네트워크를 확인하고 다시 시도해 주세요.");
+    } finally {
+      // 성공이든 실패든 버튼을 다시 풀어서 바로 재시도할 수 있게 한다
       setLoading(false);
-      timerRef.current = null;
-    }, 1000);
+      inFlightRef.current = false;
+    }
   }
 
   const inputClass =
@@ -153,20 +135,13 @@ export default function Home() {
               disabled={loading}
               className="w-full rounded-full bg-accent px-[22px] py-[11px] text-white transition-transform active:scale-95 disabled:opacity-50"
             >
-              {loading ? "PRD 미리보기 생성 중..." : "PRD 만들기"}
+              {loading ? "PRD 작성 중..." : "PRD 만들기"}
             </button>
           </form>
         </div>
       </section>
 
-      {spec && (
-        <section className="space-y-3">
-          <p className="text-sm text-muted">
-            미리보기용 가짜 데이터예요. 실제 생성은 Step 2부터예요.
-          </p>
-          <SpecView spec={spec} />
-        </section>
-      )}
+      {spec && <SpecView spec={spec} />}
     </main>
   );
 }
