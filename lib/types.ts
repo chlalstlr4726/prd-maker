@@ -9,6 +9,16 @@ export type SpecInput = {
   timeframe: Timeframe;
 };
 
+// GET /api/specs 목록 한 줄 (docs/API.md 4번). 전체 spec은 담지 않는다.
+export type SpecListItem = {
+  id: string;
+  created_at: string;
+  title: string;
+  product_name: string;
+  timeframe: string;
+  one_liner: string | null;
+};
+
 export type Spec = {
   product_name: string;
   one_liner: string;

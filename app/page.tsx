@@ -14,6 +14,7 @@ export default function Home() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [spec, setSpec] = useState<Spec | null>(null);
+  const [saveWarning, setSaveWarning] = useState("");
   // state는 다음 렌더 때 바뀌므로, 아주 빠른 연타는 ref로 한 번 더 막는다
   const inFlightRef = useRef(false);
 
@@ -44,6 +45,8 @@ export default function Home() {
       const data = await res.json().catch(() => null);
       if (res.ok && data?.spec) {
         setSpec(data.spec);
+        // 생성은 됐지만 저장에 실패한 경우: 카드는 그대로 보여주고 경고만 띄운다
+        setSaveWarning(data.saved === false ? (data.error ?? "저장하지 못했어요.") : "");
       } else {
         setError(data?.error ?? "PRD를 만들지 못했어요. 다시 시도해 주세요.");
       }
@@ -141,7 +144,16 @@ export default function Home() {
         </div>
       </section>
 
-      {spec && <SpecView spec={spec} />}
+      {spec && (
+        <section className="space-y-3">
+          {saveWarning && (
+            <p className="rounded-[18px] border border-amber-200 bg-amber-50 px-5 py-3 text-sm text-amber-800">
+              {saveWarning}
+            </p>
+          )}
+          <SpecView spec={spec} />
+        </section>
+      )}
     </main>
   );
 }

@@ -77,10 +77,15 @@ supabase/
 
 응답 201:
 ```json
-{ "id": "uuid", "created_at": "2026-10-10T...", "spec": { "...": "Spec 객체 (6번 참고)" } }
+{ "id": "uuid", "created_at": "2026-10-10T...", "spec": { "...": "Spec 객체 (6번 참고)" }, "saved": true }
 ```
 
 Step 2에서는 3번(저장)을 빼고 `{ "spec": ... }`만 돌려준다. Step 3에서 저장을 붙인다.
+
+`saved` (추가 필드): AI 생성은 성공했는데 3번 저장이 실패하면, 이미 만든 PRD를 버리지 않고 200으로 돌려준다. 저장은 한 번만 시도하고 AI를 다시 부르지 않는다. 화면은 카드를 그대로 보여주고 `error`를 경고로 띄운다.
+```json
+{ "id": null, "created_at": null, "spec": { "...": "Spec 객체" }, "saved": false, "error": "PRD는 만들었지만 저장하지 못했어요. ..." }
+```
 
 ### GET `/api/specs` (P0)
 

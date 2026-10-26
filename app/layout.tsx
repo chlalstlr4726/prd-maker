@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono, Noto_Sans_KR } from "next/font/google";
+import Link from "next/link";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -33,8 +34,13 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
       <body className="min-h-full flex flex-col font-sans">
         <header className="border-b border-border">
           <div className="mx-auto flex h-11 w-full max-w-[1088px] items-center gap-3 px-4 text-xs">
-            <span className="font-semibold">PRD 메이커</span>
-            <span className="text-muted">아이디어 한 줄로 해커톤용 PRD</span>
+            <Link href="/" className="font-semibold">
+              PRD 메이커
+            </Link>
+            <span className="hidden text-muted sm:inline">아이디어 한 줄로 해커톤용 PRD</span>
+            <Link href="/specs" className="ml-auto text-accent">
+              내 PRD 목록
+            </Link>
           </div>
         </header>
         {children}
