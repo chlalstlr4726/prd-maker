@@ -40,4 +40,14 @@ export type Spec = {
   out_of_scope: string[];
   risks: string[];
   first_prompt: string;
+  // PRD 8-3 내 버전: 최종 사용자가 받는 결과물(리포트·화면) 샘플
+  result_sample: {
+    format: string;
+    sections: { heading: string; example: string }[];
+  };
+};
+
+// 화면·마크다운 변환용. 8-3 이전에 저장된 PRD에는 result_sample이 없을 수 있다.
+export type StoredSpec = Omit<Spec, "result_sample"> & {
+  result_sample?: Spec["result_sample"];
 };

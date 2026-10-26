@@ -42,6 +42,10 @@ export const specSchema = obj({
   out_of_scope: strArray,
   risks: strArray,
   first_prompt: str,
+  result_sample: obj({
+    format: str,
+    sections: { type: "array", items: obj({ heading: str, example: str }) },
+  }),
 });
 
 // AI가 준 JSON이 정말 Spec 모양인지 실행 중에 한 번 더 확인한다 (외부 패키지 없이).
@@ -90,6 +94,9 @@ export function isSpec(v: unknown): v is Spec {
     ) &&
     isStrArray(v.out_of_scope) &&
     isStrArray(v.risks) &&
-    isStr(v.first_prompt)
+    isStr(v.first_prompt) &&
+    isRec(v.result_sample) &&
+    isStr(v.result_sample.format) &&
+    isArrayOf(v.result_sample.sections, (s) => isStr(s.heading) && isStr(s.example))
   );
 }

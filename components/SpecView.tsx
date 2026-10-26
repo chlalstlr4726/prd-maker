@@ -1,4 +1,20 @@
-import type { Spec } from "@/lib/types";
+"use client";
+
+import { specToMarkdown, toFileName } from "@/lib/markdown";
+import type { StoredSpec } from "@/lib/types";
+
+// PRD 8-4: 서버 요청 없이 브라우저에서 바로 .md 파일을 만들어 내려받는다
+function downloadMarkdown(spec: StoredSpec) {
+  const blob = new Blob([specToMarkdown(spec)], { type: "text/markdown;charset=utf-8" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = toFileName(spec.product_name);
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  URL.revokeObjectURL(url);
+}
 
 // 한 섹션 = 위 1px 선 + 왼쪽 라벨 / 오른쪽 본문 (768px 미만은 위아래로 쌓임)
 function Section({ label, children }: { label: string; children: React.ReactNode }) {
@@ -19,14 +35,25 @@ function PriorityBadge({ priority }: { priority: "P0" | "P1" }) {
   );
 }
 
-export default function SpecView({ spec }: { spec: Spec }) {
+export default function SpecView({ spec }: { spec: StoredSpec }) {
+  const sample = spec.result_sample;
+
   return (
     <article className="rounded-[18px] border border-border bg-card px-6 pt-6">
-      <header className="pb-6">
-        <h2 className="text-[34px] font-semibold leading-[1.15] tracking-[-0.374px]">
-          {spec.product_name}
-        </h2>
-        <p className="mt-2 text-muted">{spec.one_liner}</p>
+      <header className="flex flex-col gap-4 pb-6 sm:flex-row sm:items-start sm:justify-between">
+        <div className="min-w-0">
+          <h2 className="break-words text-[34px] font-semibold leading-[1.15] tracking-[-0.374px]">
+            {spec.product_name}
+          </h2>
+          <p className="mt-2 text-muted">{spec.one_liner}</p>
+        </div>
+        <button
+          type="button"
+          onClick={() => downloadMarkdown(spec)}
+          className="shrink-0 self-start rounded-full border border-accent px-4 py-2 text-sm text-accent transition-transform active:scale-95"
+        >
+          md 다운로드
+        </button>
       </header>
 
       <Section label="문제">
@@ -75,6 +102,22 @@ export default function SpecView({ spec }: { spec: Spec }) {
             </li>
           ))}
         </ul>
+      </Section>
+
+      <Section label="결과물 샘플">
+        {sample && Array.isArray(sample.sections) ? (
+          <div className="space-y-4">
+            <p className="text-sm text-muted">{sample.format}</p>
+            {sample.sections.map((s, i) => (
+              <div key={i} className="rounded-lg border border-border bg-bg p-4">
+                <p className="font-semibold">{s.heading}</p>
+                <p className="mt-1 whitespace-pre-line text-muted">{s.example}</p>
+              </div>
+            ))}
+          </div>
+        ) : (
+          <p className="text-muted">이 PRD는 결과물 샘플 기능 이전에 만들어져 샘플이 없어요.</p>
+        )}
       </Section>
 
       <Section label="데이터 모델 / API">
