@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect, useRef, useState } from "react";
 import { specToMarkdown, toFileName } from "@/lib/markdown";
 import type { StoredSpec } from "@/lib/types";
 
@@ -37,6 +38,29 @@ function PriorityBadge({ priority }: { priority: "P0" | "P1" }) {
 
 export default function SpecView({ spec }: { spec: StoredSpec }) {
   const sample = spec.result_sample;
+  // 마크다운 복사 (P1): 결과를 2초간 버튼 글자로 알려준다
+  const [copyState, setCopyState] = useState<"idle" | "done" | "failed">("idle");
+  const resetTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => {
+    return () => {
+      if (resetTimer.current) clearTimeout(resetTimer.current);
+    };
+  }, []);
+
+  async function copyMarkdown() {
+    try {
+      await navigator.clipboard.writeText(specToMarkdown(spec));
+      setCopyState("done");
+    } catch {
+      setCopyState("failed"); // 권한 거부, http 환경 등
+    }
+    if (resetTimer.current) clearTimeout(resetTimer.current);
+    resetTimer.current = setTimeout(() => setCopyState("idle"), 2000);
+  }
+
+  const buttonClass =
+    "rounded-full border border-accent px-4 py-2 text-sm text-accent transition-transform active:scale-95";
 
   return (
     <article className="rounded-[18px] border border-border bg-card px-6 pt-6">
@@ -47,13 +71,14 @@ export default function SpecView({ spec }: { spec: StoredSpec }) {
           </h2>
           <p className="mt-2 text-muted">{spec.one_liner}</p>
         </div>
-        <button
-          type="button"
-          onClick={() => downloadMarkdown(spec)}
-          className="shrink-0 self-start rounded-full border border-accent px-4 py-2 text-sm text-accent transition-transform active:scale-95"
-        >
-          md 다운로드
-        </button>
+        <div className="flex shrink-0 gap-2 self-start">
+          <button type="button" onClick={copyMarkdown} className={buttonClass}>
+            {copyState === "done" ? "복사됨" : copyState === "failed" ? "복사 실패" : "마크다운 복사"}
+          </button>
+          <button type="button" onClick={() => downloadMarkdown(spec)} className={buttonClass}>
+            md 다운로드
+          </button>
+        </div>
       </header>
 
       <Section label="문제">

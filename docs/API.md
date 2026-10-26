@@ -65,12 +65,25 @@ supabase/
   "title": "해커톤 팀원 매칭",
   "problem": "해커톤 직전에 팀을 못 구해서 혼자 나가거나 포기한다",
   "target": "해커톤 처음 나가는 대학생",
-  "timeframe": "해커톤 24시간"
+  "timeframe": "해커톤 24시간",
+  "settings": {
+    "presetId": "default",
+    "goal": "mvp",
+    "teamSize": "solo",
+    "customInstructions": ""
+  }
 }
 ```
 
+`settings` (선택, PRD 8-5): 프로젝트 설정. **없거나 필드를 생략하면 기본값**(`default`, `mvp`, `solo`, `""`)을 쓴다. 그래서 `settings` 없는 예전 요청도 그대로 동작한다.
+- `presetId`: `default` / `fashion-beauty`. 브라우저는 id만 보내고, 실제 지침은 서버(`lib/prompt.ts`)가 고른다.
+- `goal`: `prototype` / `mvp` / `production`
+- `teamSize`: `solo` / `small`(2~3명) / `team`(4명 이상)
+- `customInstructions`: 문자열, trim 후 1000자 이하
+- **명시했는데 허용 값이 아니거나 타입이 틀리면 400** (조용히 기본값으로 바꾸지 않음). `settings`가 객체가 아니어도 400.
+
 처리 순서:
-1. 검증: `title` 1~100자, `problem` 1~1000자 (아니면 400). `target`은 비어도 됨. `timeframe`이 "해커톤 24시간" / "1주" / "1달"이 아니면 "해커톤 24시간"으로.
+1. 검증: `title` 1~100자, `problem` 1~1000자 (아니면 400). `target`은 비어도 됨. `timeframe`이 "해커톤 24시간" / "1주" / "1달"이 아니면 "해커톤 24시간"으로. 이어서 `settings` 검증 (아니면 400). **여기까지 통과해야 OpenAI를 부른다.**
 2. `generateSpec()`으로 OpenAI 호출 (실패하면 502)
 3. `specs` 테이블에 insert (실패하면 500)
 4. 응답
@@ -132,7 +145,7 @@ Step 2에서는 3번(저장)을 빼고 `{ "spec": ... }`만 돌려준다. Step 3
 | SDK | `openai` 공식 Node SDK |
 | API | Responses API (`client.responses.create`) |
 | 모델 | `process.env.OPENAI_MODEL`, 없으면 `gpt-6-luna` |
-| 프롬프트 | `instructions` = 역할 + 규칙, `input` = 사용자가 입력한 4개 값 |
+| 프롬프트 | `instructions`(서버만 작성) = 공통 PRD 규칙 + 관점 프리셋 지침 + 프로젝트 조건(목표·팀 규모·기간). `input`(사용자 데이터) = `{ project: 입력 4개 값, user_preferences: 추가 지침 }` JSON. 추가 지침은 적극 반영하되 낮은 우선순위라 필수 규칙·출력 형식을 바꾸지 못한다 |
 | 출력 형식 | 구조화 출력: `text.format = { type: "json_schema", name: "prd", strict: true, schema }` |
 | 결과 읽기 | `JSON.parse(response.output_text)` |
 

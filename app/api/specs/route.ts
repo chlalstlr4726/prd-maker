@@ -1,5 +1,6 @@
 import { connection } from "next/server";
 import { GenerateError, generateSpec, type GenerateErrorKind } from "@/lib/openai";
+import { validateSettings } from "@/lib/presets";
 import { getSupabase, SupabaseConfigError } from "@/lib/supabase";
 import type { Spec, SpecInput, SpecListItem, Timeframe } from "@/lib/types";
 
@@ -55,9 +56,15 @@ export async function POST(request: Request) {
     return errorResponse(400, input);
   }
 
+  // 프로젝트 설정(PRD 8-5): 없거나 생략 → 기본값, 명시했는데 허용 밖 → OpenAI 부르기 전에 400
+  const checked = validateSettings((body as Record<string, unknown>).settings);
+  if (!checked.ok) {
+    return errorResponse(400, checked.error);
+  }
+
   let spec: Spec;
   try {
-    spec = await generateSpec(input);
+    spec = await generateSpec(input, checked.settings);
   } catch (err) {
     if (err instanceof GenerateError) {
       console.error(`[api/specs] ${err.kind}: ${err.message}`);

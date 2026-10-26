@@ -2,6 +2,14 @@
 
 import { useRef, useState } from "react";
 import SpecView from "@/components/SpecView";
+import {
+  CUSTOM_INSTRUCTIONS_MAX,
+  DEFAULT_SETTINGS,
+  GOALS,
+  PRESET_OPTIONS,
+  TEAM_SIZES,
+  type ProjectSettings,
+} from "@/lib/presets";
 import type { Spec, SpecInput, Timeframe } from "@/lib/types";
 
 const TIMEFRAMES: Timeframe[] = ["해커톤 24시간", "1주", "1달"];
@@ -11,6 +19,9 @@ export default function Home() {
   const [problem, setProblem] = useState("");
   const [target, setTarget] = useState("");
   const [timeframe, setTimeframe] = useState<Timeframe>("해커톤 24시간");
+  // 프로젝트 설정 (PRD 8-5). 서버로는 presetId만 보내고, 실제 지침은 서버가 고른다.
+  const [settings, setSettings] = useState<ProjectSettings>(DEFAULT_SETTINGS);
+  const preset = PRESET_OPTIONS.find((p) => p.id === settings.presetId);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [spec, setSpec] = useState<Spec | null>(null);
@@ -40,7 +51,10 @@ export default function Home() {
       const res = await fetch("/api/specs", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(input),
+        body: JSON.stringify({
+          ...input,
+          settings: { ...settings, customInstructions: settings.customInstructions.trim() },
+        }),
       });
       const data = await res.json().catch(() => null);
       if (res.ok && data?.spec) {
@@ -126,6 +140,83 @@ export default function Home() {
                 ))}
               </select>
             </label>
+
+            <fieldset className="space-y-4 border-t border-border pt-6">
+              <legend className="text-sm font-semibold">
+                프로젝트 설정 <span className="font-normal text-muted">(선택)</span>
+              </legend>
+
+              <label className="block space-y-2">
+                <span className="text-sm font-semibold">관점</span>
+                <select
+                  className={inputClass}
+                  value={settings.presetId}
+                  onChange={(e) =>
+                    setSettings({ ...settings, presetId: e.target.value as ProjectSettings["presetId"] })
+                  }
+                >
+                  {PRESET_OPTIONS.map((p) => (
+                    <option key={p.id} value={p.id}>
+                      {p.label}
+                    </option>
+                  ))}
+                </select>
+                {preset && <p className="text-sm text-muted">{preset.description}</p>}
+              </label>
+
+              <div className="grid gap-4 sm:grid-cols-2">
+                <label className="block space-y-2">
+                  <span className="text-sm font-semibold">목표</span>
+                  <select
+                    className={inputClass}
+                    value={settings.goal}
+                    onChange={(e) =>
+                      setSettings({ ...settings, goal: e.target.value as ProjectSettings["goal"] })
+                    }
+                  >
+                    {GOALS.map((g) => (
+                      <option key={g.id} value={g.id}>
+                        {g.label}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+
+                <label className="block space-y-2">
+                  <span className="text-sm font-semibold">팀 규모</span>
+                  <select
+                    className={inputClass}
+                    value={settings.teamSize}
+                    onChange={(e) =>
+                      setSettings({ ...settings, teamSize: e.target.value as ProjectSettings["teamSize"] })
+                    }
+                  >
+                    {TEAM_SIZES.map((t) => (
+                      <option key={t.id} value={t.id}>
+                        {t.label}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+              </div>
+
+              <label className="block space-y-2">
+                <span className="text-sm font-semibold">
+                  추가 지침{" "}
+                  <span className="font-normal text-muted">
+                    ({settings.customInstructions.length}/{CUSTOM_INSTRUCTIONS_MAX})
+                  </span>
+                </span>
+                <textarea
+                  className="w-full rounded-[18px] border border-border bg-bg px-5 py-[11px] outline-none focus:border-accent"
+                  rows={2}
+                  value={settings.customInstructions}
+                  onChange={(e) => setSettings({ ...settings, customInstructions: e.target.value })}
+                  placeholder="예: Supabase를 쓰고 싶다. 로그인은 빼 줘. 결과 화면을 특히 자세히."
+                  maxLength={CUSTOM_INSTRUCTIONS_MAX}
+                />
+              </label>
+            </fieldset>
 
             {error && (
               <p className="rounded-[18px] border border-red-200 bg-red-50 px-5 py-3 text-sm text-red-700">
